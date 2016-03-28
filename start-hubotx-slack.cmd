@@ -1,0 +1,1 @@
+bin\hubot --adapter slack
