@@ -87,18 +87,18 @@ SAW.prototype.showIncident = function(IncidentId) {
 		}
 	});
 	return deferred.promise;
-}
+};
 
 SAW.prototype.assignIncident = function(IncidentId, personName) {
 
-}
+};
 
 SAW.prototype.closeIncident = function(IncidentId) {
 
-}
+};
 
 SAW.prototype.onIncidentOccur = function(callback) {
 	this.eventEmitter.on(this.EVENT_NEW_INCIDENT, callback);
-}
+};
 
 module.exports = new SAW();
