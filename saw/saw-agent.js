@@ -1,4 +1,8 @@
+var token = '';
+
 function login(url, tenantId, username, password) {
+
+	
 
 }
 
