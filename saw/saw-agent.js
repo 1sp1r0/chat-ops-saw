@@ -1,5 +1,6 @@
 var EventEmitter = require('events');
 var Client = require('node-rest-client').Client;
+var Q = require('q');
 
 function SAW() {
 	this.eventEmitter = new EventEmitter();
@@ -60,7 +61,6 @@ SAW.prototype.watchIncident = function () {
 				if (newIncidents.length > 0) {
 					console.log(newIncidents.length + ' Incidents are created');
 					that.eventEmitter.emit(that.EVENT_NEW_INCIDENT, newIncidents);
-					that.showIncident(newIncidents[0].properties.Id);
 				}
 				start = new Date().getTime();
 			}
@@ -74,11 +74,19 @@ SAW.prototype.showIncident = function(IncidentId) {
 		'DisplayLabel'
 	];
 	var that = this;
+	var deferred = Q.defer();
 	that.__httpGet(that.BASE_URL_INCIDENT + '/' + IncidentId + '?layout=' + layout.join(), function (data, res) {
-		if (res.entities.length > 0) {
-			res.entities[0]
+		if (res.statusCode == 200) {
+			if (data.entities.length > 0) {
+				deferred.resolve(data.entities[0]);
+			} else {
+				deferred.reject('Cannot find Incident: ' + IncidentId);
+			}
+		} else {
+			deferred.reject(res.statusMessage);
 		}
 	});
+	return deferred.promise;
 }
 
 SAW.prototype.assignIncident = function(IncidentId, personName) {
