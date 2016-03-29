@@ -7,6 +7,8 @@ function SAW() {
 };
 
 SAW.prototype.SAW_URL = '';
+SAW.prototype.TENANT_ID = '';
+SAW.prototype.BASE_URL_INCIDENT = '';
 SAW.prototype.TOKEN = '';
 SAW.prototype.headers = { 'Content-Type': 'application/json' };
 SAW.prototype.DELAY_WATCH_INCIDENT = 1000 * 60 * 5;
@@ -23,6 +25,8 @@ SAW.prototype.__httpPost = function (path, data, callback) {
 SAW.prototype.login = function (url, tenantId, username, password) {
 	var that = this;
 	that.SAW_URL = url;
+	that.TENANT_ID = tenantId;
+	that.BASE_URL_INCIDENT = '/rest/' + that.TENANT_ID + '/ems/Incident';
 
 	that.__httpPost('/auth/authentication-endpoint/authenticate/login?TENANTID=' + tenantId, { 'Login': username, 'Password': password }, function (data, res) {
 		if (res.statusCode == 200) {
@@ -39,30 +43,42 @@ SAW.prototype.watchIncident = function () {
 	setInterval(function () {
 		var layout = ['Id','DisplayLabel'];
 		var end = new Date().getTime();
-		that.__httpGet('/rest/100000002/ems/Incident?filter=EmsCreationTime+btw+(' + start + ',' + end + ')&layout=' + layout.join(), function (data, res) {
-			var newIncidents = data.entities;
-			/*
-				[{ 
-					entity_type: 'Incident',
-				    properties: { 
-				   		LastUpdateTime: 1459231699278,
-				       	Id: '18246',
-				       	DisplayLabel: 'ABC' 
-				    },
-				    related_properties: {} 
-				}]
-			*/
-			if (newIncidents.length > 0) {
-				console.log(newIncidents.length + ' Incidents are created');
-				that.eventEmitter.emit(that.EVENT_NEW_INCIDENT, newIncidents);
+		that.__httpGet(that.BASE_URL_INCIDENT + '?filter=EmsCreationTime+btw+(' + start + ',' + end + ')&layout=' + layout.join(), function (data, res) {
+			if (res.statusCode == 200) {
+				var newIncidents = data.entities;
+				/*
+					[{ 
+						entity_type: 'Incident',
+					    properties: { 
+					   		LastUpdateTime: 1459231699278,
+					       	Id: '18246',
+					       	DisplayLabel: 'ABC' 
+					    },
+					    related_properties: {} 
+					}]
+				*/
+				if (newIncidents.length > 0) {
+					console.log(newIncidents.length + ' Incidents are created');
+					that.eventEmitter.emit(that.EVENT_NEW_INCIDENT, newIncidents);
+					that.showIncident(newIncidents[0].properties.Id);
+				}
+				start = new Date().getTime();
 			}
 		});
-		start = new Date().getTime();
 	}, 1000 * 30);
 };
 
 SAW.prototype.showIncident = function(IncidentId) {
-
+	var layout = [
+		'Id',
+		'DisplayLabel'
+	];
+	var that = this;
+	that.__httpGet(that.BASE_URL_INCIDENT + '/' + IncidentId + '?layout=' + layout.join(), function (data, res) {
+		if (res.entities.length > 0) {
+			res.entities[0]
+		}
+	});
 }
 
 SAW.prototype.assignIncident = function(IncidentId, personName) {

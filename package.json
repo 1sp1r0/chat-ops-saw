@@ -5,6 +5,7 @@
   "author": "huayongj <yong-jianh@hpe.com>",
   "description": "A simple helpful robot for your Company",
   "dependencies": {
+    "duck-type": "*",
     "https-proxy-agent": "1.0.0",
     "hubot": "^2.18.0",
     "hubot-diagnostics": "0.0.1",
@@ -21,7 +22,7 @@
     "hubot-shipit": "^0.2.0",
     "hubot-slack": "^3.4.2",
     "node-rest-client": "^1.8.0",
-    "duck-type": "*"
+    "q": "^1.4.1"
   },
   "engines": {
     "node": "0.10.x"
