@@ -1,5 +1,5 @@
-var sawAgent = require('../saw-agent');
-var slackAgent = require('../slack-agent');
+var sawAgent = require('../saw/saw-agent');
+var slackAgent = require('../saw/slack-agent');
 var HUBUT_NAME = 'hello';
 
 sawAgent.login('http://sheyu4.hpeswlab.net:8000','100000002','devUser2','Password1');
