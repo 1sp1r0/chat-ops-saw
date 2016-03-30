@@ -5,6 +5,7 @@ var Q = require('q');
 function SAW() {
 	this.eventEmitter = new EventEmitter();
 	this.client = new Client();
+	this.intervalObject = undefined
 };
 
 SAW.prototype.SAW_URL = '';
@@ -45,10 +46,16 @@ SAW.prototype.login = function (url, tenantId, username, password) {
 SAW.prototype.watchIncident = function () {
 	var that = this;
 	var start = new Date().getTime();
-	setInterval(function () {
+
+	if (this.intervalObject !== undefined) {
+		clearInterval(this.intervalObject);
+		console.log('Clear interval Object');
+	}
+
+	this.intervalObject = setInterval(function () {
 		var layout = ['Id','DisplayLabel'];
 		var end = new Date().getTime();
-		that.__httpGet(that.BASE_URL_INCIDENT + '?filter=EmsCreationTime+btw+(' + start + ',' + end + ')&layout=' + layout.join(), function (data, res) {
+		that.__httpGet(that.BASE_URL_INCIDENT + '?filter=EmsCreationTime+btw+(' + [start, end].join() + ')&layout=' + layout.join(), function (data, res) {
 			if (res.statusCode == 200) {
 				var newIncidents = data.entities;
 				// [{ 
