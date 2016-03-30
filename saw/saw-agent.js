@@ -9,10 +9,13 @@ function SAW() {
 
 SAW.prototype.SAW_URL = '';
 SAW.prototype.TENANT_ID = '';
+
 SAW.prototype.BASE_URL_INCIDENT = '';
+SAW.prototype.BASE_URL_PERSON = '';
+
 SAW.prototype.TOKEN = '';
 SAW.prototype.headers = { 'Content-Type': 'application/json' };
-SAW.prototype.DELAY_WATCH_INCIDENT = 1000 * 60 * 5;
+SAW.prototype.DELAY_WATCH_INCIDENT = 1000 * 10;
 SAW.prototype.EVENT_NEW_INCIDENT = 'NEW_INCIDENT';
 
 SAW.prototype.__httpGet = function (path, callback) {
@@ -28,6 +31,7 @@ SAW.prototype.login = function (url, tenantId, username, password) {
 	that.SAW_URL = url;
 	that.TENANT_ID = tenantId;
 	that.BASE_URL_INCIDENT = '/rest/' + that.TENANT_ID + '/ems/Incident';
+	that.BASE_URL_PERSON = '/rest/' + that.TENANT_ID + '/ems/Person'
 
 	that.__httpPost('/auth/authentication-endpoint/authenticate/login?TENANTID=' + tenantId, { 'Login': username, 'Password': password }, function (data, res) {
 		if (res.statusCode == 200) {
@@ -47,53 +51,76 @@ SAW.prototype.watchIncident = function () {
 		that.__httpGet(that.BASE_URL_INCIDENT + '?filter=EmsCreationTime+btw+(' + start + ',' + end + ')&layout=' + layout.join(), function (data, res) {
 			if (res.statusCode == 200) {
 				var newIncidents = data.entities;
-				/*
-					[{ 
-						entity_type: 'Incident',
-					    properties: { 
-					   		LastUpdateTime: 1459231699278,
-					       	Id: '18246',
-					       	DisplayLabel: 'ABC' 
-					    },
-					    related_properties: {} 
-					}]
-				*/
+				// [{ 
+				//		entity_type: 'Incident',
+				//		properties: { 
+				//    		LastUpdateTime: 1459231699278,
+				//        	Id: '18246',
+				//        	DisplayLabel: 'ABC' 
+				//		},
+				//     	related_properties: {} 
+				// }]
 				if (newIncidents.length > 0) {
 					console.log(newIncidents.length + ' Incidents are created');
 					that.eventEmitter.emit(that.EVENT_NEW_INCIDENT, newIncidents);
 				}
-				start = new Date().getTime();
+				start = end;
 			}
 		});
-	}, 1000 * 30);
+	}, that.DELAY_WATCH_INCIDENT);
 };
 
-SAW.prototype.showIncident = function(IncidentId) {
-	var layout = [
-		'Id',
-		'DisplayLabel'
-	];
+SAW.prototype.__getIncident = function (incidentId) {
 	var that = this;
-	var deferred = Q.defer();
-	that.__httpGet(that.BASE_URL_INCIDENT + '/' + IncidentId + '?layout=' + layout.join(), function (data, res) {
-		if (res.statusCode == 200) {
-			if (data.entities.length > 0) {
-				deferred.resolve(data.entities[0]);
+	var layout = ['Id','DisplayLabel','AssignedGroup.Id','AssignedGroup.Name'];
+	return Q.Promise(function (resolve, reject, notify) {
+		that.__httpGet(that.BASE_URL_INCIDENT + '/' + incidentId + '?layout=' + layout.join(), function (data, res) {
+			if (res.statusCode == 200) {
+				if (data.entities.length > 0) {
+					resolve(data.entities[0]);
+				} else {
+					reject('Cannot find Incident: ' + incidentId);
+				}
 			} else {
-				deferred.reject('Cannot find Incident: ' + IncidentId);
+				reject(res.statusMessage);
 			}
+		});
+	});
+};
+
+SAW.prototype.__getPersonsFromGroup = function (incident) {
+	var that = this;
+	var layout = ['Id','Name','Email'];
+	return Q.Promise(function (resolve, reject, notify) {
+		var assignedGroup = incident.related_properties.AssignedGroup;
+		if (assignedGroup === undefined) {
+			resolve(incident);
 		} else {
-			deferred.reject(res.statusMessage);
+			that.__httpGet(that.BASE_URL_PERSON + '?filter=(PersonToGroup[Id = ' + assignedGroup.Id + '])&layout=' + layout.join(), function (data, res) {
+				if (res.statusCode == 200) {
+					if (data.entities.length > 0) {
+						incident['persons'] = data.entities;
+					} else {
+						console.log('No persons in group ' + assignedGroup.Name);
+					}
+				} else {
+					console.log(res.statusMessage);
+				}
+				resolve(incident);
+			});
 		}
 	});
-	return deferred.promise;
 };
 
-SAW.prototype.assignIncident = function(IncidentId, personName) {
+SAW.prototype.showIncident = function (incidentId) {
+	return this.__getIncident.bind(this)(incidentId).then(this.__getPersonsFromGroup.bind(this));
+};
+
+SAW.prototype.assignIncident = function(incidentId, personName) {
 
 };
 
-SAW.prototype.closeIncident = function(IncidentId) {
+SAW.prototype.closeIncident = function(incidentId) {
 
 };
 
