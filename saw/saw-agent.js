@@ -89,6 +89,7 @@ SAW.prototype.__getIncident = function (incidentId) {
 };
 
 SAW.prototype.__getPersonsFromGroup = function (incident) {
+	incident['persons'] = [];
 	var that = this;
 	var layout = ['Id','Name','Email'];
 	return Q.Promise(function (resolve, reject, notify) {
