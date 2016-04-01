@@ -158,7 +158,7 @@ SAW.prototype.watchIncident = function () {
 						console.log(createdEntities.length + ' Entities are created in SAW');
 						that.eventEmitter.emit(that.EVENT_SAW_NEW_ENTITY, createdEntities);
 					}
-					if (updatedEntities > 0) {
+					if (updatedEntities.length > 0) {
 						console.log(updatedEntities.length + ' Entities are updated in SAW');
 						that.eventEmitter.emit(that.EVENT_SAW_UPDATE_ENTITY, updatedEntities);
 					}
