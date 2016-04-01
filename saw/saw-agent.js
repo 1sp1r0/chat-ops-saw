@@ -34,6 +34,79 @@ SAW.prototype.__httpPost = function (path, data, callback) {
 	this.client.post(this.sawUrl + path, { headers: this.headers, data: data }, callback);
 };
 
+SAW.prototype.__splitEntities = function (entities, createdEntities, updatedEntities) {
+	var that = this;
+	entities.forEach(function (e) {
+		if (e.properties.EmsCreationTime >= that.LAUNCH_TIME) {
+			var entityId = e.properties.Id;
+			if (that.cachedEntities[entityId] !== undefined) {
+				console.log('Add entity to updated entity array');
+				updatedEntities.push(e);
+			} else {
+				console.log('Add entity to created entity array');
+				createdEntities.push(e);
+			}
+			that.cachedEntities[entityId] = e;
+			console.log('Cached entities after launched: ' + JSON.stringify(that.cachedEntities));
+		}
+	});
+};
+
+SAW.prototype.__getEntity = function (entityId) {
+	var that = this;
+	var layout = ['Id','DisplayLabel','AssignedGroup.Id','AssignedGroup.Name'];
+	return Q.Promise(function (resolve, reject, notify) {
+		that.__httpGet(that.baseUrlEntity + '/' + entityId + '?layout=' + layout.join(), function (data, res) {
+			if (res.statusCode == 200) {
+				if (data.entities.length > 0) {
+					resolve(data.entities[0]);
+				} else {
+					reject('Cannot find entity: ' + entityId);
+				}
+			} else {
+				reject(res.statusMessage);
+			}
+		});
+	});
+};
+
+SAW.prototype.__getPersonsFromGroup = function (entity) {
+	entity['persons'] = [];
+	var that = this;
+	var layout = ['Id','Name','Email'];
+	return Q.Promise(function (resolve, reject, notify) {
+		var assignedGroup = entity.related_properties.AssignedGroup;
+		if (assignedGroup === undefined) {
+			resolve(entity);
+		} else {
+			that.__httpGet(that.baseUrlPerson + '?filter=(PersonToGroup[Id = ' + assignedGroup.Id + '])&layout=' + layout.join(), function (data, res) {
+				if (res.statusCode == 200) {
+					if (data.entities.length > 0) {
+						entity['persons'] = data.entities;
+					} else {
+						console.log('No persons in group ' + assignedGroup.Name);
+					}
+				} else {
+					console.log(res.statusMessage);
+				}
+				resolve(entity);
+			});
+		}
+	});
+};
+
+SAW.prototype.__createUpdateOperation = function (entityType, entityId, properties) {
+	return {
+		entities:[{
+			entity_type: entityType,
+			properties: _.extend({
+				Id: entityId
+			}, properties)
+		}],
+		operation: "UPDATE"
+	};
+};
+
 SAW.prototype.login = function (url, tenantId, username, password) {
 	var that = this;
 	that.sawUrl = url;
@@ -98,81 +171,8 @@ SAW.prototype.watchIncident = function () {
 	}, that.DELAY_WATCH_ENTITY);
 };
 
-SAW.prototype.__splitEntities = function (entities, createdEntities, updatedEntities) {
-	var that = this;
-	entities.forEach(function (e) {
-		if (e.properties.EmsCreationTime >= that.LAUNCH_TIME) {
-			var entityId = e.properties.Id;
-			if (that.cachedEntities[entityId] !== undefined) {
-				console.log('Add entity to updated entity array');
-				updatedEntities.push(e);
-			} else {
-				console.log('Add entity to created entity array');
-				createdEntities.push(e);
-				that.cachedEntities[entityId] = e;
-				console.log('Cached entities after launched: ' + JSON.stringify(that.cachedEntities));
-			}
-		}
-	});
-};
-
-SAW.prototype.__getEntity = function (entityId) {
-	var that = this;
-	var layout = ['Id','DisplayLabel','AssignedGroup.Id','AssignedGroup.Name'];
-	return Q.Promise(function (resolve, reject, notify) {
-		that.__httpGet(that.baseUrlEntity + '/' + entityId + '?layout=' + layout.join(), function (data, res) {
-			if (res.statusCode == 200) {
-				if (data.entities.length > 0) {
-					resolve(data.entities[0]);
-				} else {
-					reject('Cannot find entity: ' + entityId);
-				}
-			} else {
-				reject(res.statusMessage);
-			}
-		});
-	});
-};
-
-SAW.prototype.__getPersonsFromGroup = function (entity) {
-	entity['persons'] = [];
-	var that = this;
-	var layout = ['Id','Name','Email'];
-	return Q.Promise(function (resolve, reject, notify) {
-		var assignedGroup = entity.related_properties.AssignedGroup;
-		if (assignedGroup === undefined) {
-			resolve(entity);
-		} else {
-			that.__httpGet(that.baseUrlPerson + '?filter=(PersonToGroup[Id = ' + assignedGroup.Id + '])&layout=' + layout.join(), function (data, res) {
-				if (res.statusCode == 200) {
-					if (data.entities.length > 0) {
-						entity['persons'] = data.entities;
-					} else {
-						console.log('No persons in group ' + assignedGroup.Name);
-					}
-				} else {
-					console.log(res.statusMessage);
-				}
-				resolve(entity);
-			});
-		}
-	});
-};
-
 SAW.prototype.showIncident = function (entityId) {
 	return this.__getEntity.bind(this)(entityId).then(this.__getPersonsFromGroup.bind(this));
-};
-
-SAW.prototype.__createUpdateOperation = function (entityType, entityId, properties) {
-	return {
-		entities:[{
-			entity_type: entityType,
-			properties: _.extend({
-				Id: entityId
-			}, properties)
-		}],
-		operation: "UPDATE"
-	};
 };
 
 SAW.prototype.assignEntity = function(entityType, entityId, personId) {
