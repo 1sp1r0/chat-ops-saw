@@ -1,3 +1,4 @@
+var util = require('util');
 var EventEmitter = require('events');
 var Client = require('node-rest-client').Client;
 var Q = require('q');
@@ -31,8 +32,8 @@ SAW.prototype.login = function (url, tenantId, username, password) {
 	var that = this;
 	that.SAW_URL = url;
 	that.TENANT_ID = tenantId;
-	that.BASE_URL_INCIDENT = '/rest/' + that.TENANT_ID + '/ems/Incident';
-	that.BASE_URL_PERSON = '/rest/' + that.TENANT_ID + '/ems/Person'
+	that.BASE_URL_INCIDENT = util.format('/rest/%s/ems/Incident', that.TENANT_ID);
+	that.BASE_URL_PERSON = util.format('/rest/%s/ems/Person', that.TENANT_ID);
 
 	that.__httpPost('/auth/authentication-endpoint/authenticate/login?TENANTID=' + tenantId, { 'Login': username, 'Password': password }, function (data, res) {
 		if (res.statusCode == 200) {
@@ -124,7 +125,7 @@ SAW.prototype.showIncident = function (incidentId) {
 	return this.__getIncident.bind(this)(incidentId).then(this.__getPersonsFromGroup.bind(this));
 };
 
-SAW.prototype.assignIncident = function(incidentId, personName) {
+SAW.prototype.assignIncident = function(incidentId, personId) {
 
 };
 
