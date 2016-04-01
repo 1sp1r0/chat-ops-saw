@@ -2,20 +2,22 @@ var util = require('util');
 var EventEmitter = require('events');
 var Client = require('node-rest-client').Client;
 var Q = require('q');
+var _ = require('underscore');
 
 function SAW() {
 	this.eventEmitter = new EventEmitter();
 	this.client = new Client();
 	this.intervalObject = undefined
+	this.SAW_URL = '';
+	this.TENANT_ID = '';
+
+	this.BASE_URL_BULK = '';
+	this.BASE_URL_INCIDENT = '';
+	this.BASE_URL_PERSON = '';
+
+	this.TOKEN = '';
 };
 
-SAW.prototype.SAW_URL = '';
-SAW.prototype.TENANT_ID = '';
-
-SAW.prototype.BASE_URL_INCIDENT = '';
-SAW.prototype.BASE_URL_PERSON = '';
-
-SAW.prototype.TOKEN = '';
 SAW.prototype.headers = { 'Content-Type': 'application/json' };
 SAW.prototype.DELAY_WATCH_INCIDENT = 1000 * 10;
 SAW.prototype.EVENT_NEW_INCIDENT = 'NEW_INCIDENT';
@@ -34,6 +36,7 @@ SAW.prototype.login = function (url, tenantId, username, password) {
 	that.TENANT_ID = tenantId;
 	that.BASE_URL_INCIDENT = util.format('/rest/%s/ems/Incident', that.TENANT_ID);
 	that.BASE_URL_PERSON = util.format('/rest/%s/ems/Person', that.TENANT_ID);
+	that.BASE_URL_BULK = util.format('/rest/%s/ems/bulk', that.TENANT_ID);
 
 	that.__httpPost('/auth/authentication-endpoint/authenticate/login?TENANTID=' + tenantId, { 'Login': username, 'Password': password }, function (data, res) {
 		if (res.statusCode == 200) {
@@ -42,7 +45,7 @@ SAW.prototype.login = function (url, tenantId, username, password) {
 			console.log('Cannot login SAW. Message: ' + res.statusMessage);
 		}
 	});
-}
+};
 
 SAW.prototype.watchIncident = function () {
 	var that = this;
@@ -125,8 +128,30 @@ SAW.prototype.showIncident = function (incidentId) {
 	return this.__getIncident.bind(this)(incidentId).then(this.__getPersonsFromGroup.bind(this));
 };
 
-SAW.prototype.assignIncident = function(incidentId, personId) {
+SAW.prototype.__createUpdateOperation = function (entityType, entityId, properties) {
+	return {
+		entities:[{
+			entity_type: entityType,
+			properties: _.extend({
+				Id: entityId
+			}, properties)
+		}],
+		operation: "UPDATE"
+	};
+};
 
+SAW.prototype.assignEntity = function(entityType, entityId, personId) {
+	var that = this;
+	return Q.Promise(function (resolve, reject, notify) {
+		that.__httpPost(that.BASE_URL_BULK, that.__createUpdateOperation(entityType, entityId, { OwnedByPerson: personId }), function (data, res) {
+			if (res.statusCode == 200) {
+				// data.meta.completion_status === 'OK'
+				resolve(data);
+			} else {
+				reject(res.statusMessage);
+			}
+		})
+	});
 };
 
 SAW.prototype.closeIncident = function(incidentId) {
