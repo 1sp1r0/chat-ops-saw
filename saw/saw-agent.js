@@ -109,9 +109,9 @@ SAW.prototype.__splitEntities = function (entities, createdEntities, updatedEnti
 			} else {
 				console.log('Add entity to created entity array');
 				createdEntities.push(e);
-				that.cachedEntities[entityId] = e;
-				console.log('Cached entities after launched: ' + JSON.stringify(that.cachedEntities));
 			}
+			that.cachedEntities[entityId] = e;
+			console.log('Cached entities after launched: ' + JSON.stringify(that.cachedEntities));
 		}
 	});
 };
