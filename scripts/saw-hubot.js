@@ -1,16 +1,34 @@
-var sawAgent = require('../saw/saw-agent');
-var slackAgent = require('../saw/slack-agent');
-var HUBUT_NAME = 'hello';
 var util = require('util');
 var Q = require('q');
 
+var sawAgent = require('../saw/saw-agent');
+var slackAgent = require('../saw/slack-agent');
+var model = require('../saw/model');
+
+var HUBUT_NAME = 'hello';
+
+
+
+function genRoomName(entity) {
+	return [entity.entity_type.toLowerCase(),entity.properties.Id].join('-');
+}
+
+function genUpdateMessage(entity) {
+	return [entity.entity_type,entity.properties.Id,'updated'].join(' ');
+}
+
 sawAgent.login('http://ppmqavm155.asiapacific.hpqcorp.net:8000/','100000002','devUser2@hp.com','Password1');
 
-sawAgent.onIncidentOccur(function(result){
-	result.forEach(function(incident) {
+sawAgent.onEntityCreated(function(entities){
+	model([model.Entity]).match(entities);
 
-		var incidentId = incident.properties.Id , roomName = 'incident-' + incidentId;
-		sawAgent.showIncident(incidentId).then(function(detail){
+	entities.forEach(function(entity) {
+		var roomName = genRoomName(entity);
+		sawAgent.showDetail(entity.properties.Id).then(function(detail){
+			model(model.and(model.Entity,{
+				persons:[model.and(model.Entity, model.Person)]
+			}));
+
 			slackAgent.createRoom(roomName).then(function() {
 				return Q.all(detail.persons.map(function(person) {
 					return slackAgent.inviteMember(roomName,{email:person.properties.Email});
@@ -26,8 +44,15 @@ sawAgent.onIncidentOccur(function(result){
 	});
 });
 
+sawAgent.onEntityUpdated(function(entities) {
+	model([model.Entity]).match(entities);
+	
+	entities.forEach(function(entity) {
+		slackAgent.sendMessage(genRoomName(entity), genUpdateMessage(entity), HUBUT_NAME);
+	});
+});
 
-sawAgent.watchIncident();
+sawAgent.watch();
 
 module.exports = function(hubot) {
 	hubot.hear(/badger/i,function(res) {

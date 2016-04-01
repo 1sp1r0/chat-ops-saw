@@ -124,7 +124,7 @@ SAW.prototype.login = function (url, tenantId, username, password) {
 	});
 };
 
-SAW.prototype.watchIncident = function () {
+SAW.prototype.watch = function () {
 	var that = this;
 	var start = new Date().getTime();
 	that.LAUNCH_TIME = start;
@@ -171,7 +171,7 @@ SAW.prototype.watchIncident = function () {
 	}, that.DELAY_WATCH_ENTITY);
 };
 
-SAW.prototype.showIncident = function (entityId) {
+SAW.prototype.showDetail = function (entityId) {
 	return this.__getEntity.bind(this)(entityId).then(this.__getPersonsFromGroup.bind(this));
 };
 
@@ -193,11 +193,11 @@ SAW.prototype.closeIncident = function(entityId) {
 
 };
 
-SAW.prototype.onIncidentOccur = function(callback) {
+SAW.prototype.onEntityCreated = function(callback) {
 	this.eventEmitter.on(this.EVENT_SAW_NEW_ENTITY, callback);
 };
 
-SAW.prototype.onIncidentUpdated = function(callback) {
+SAW.prototype.onEntityUpdated = function(callback) {
 	this.eventEmitter.on(this.EVENT_SAW_UPDATE_ENTITY, callback);
 };
 

@@ -28,7 +28,6 @@ function apiURL(baseURL, action,  params) {
 function callSlack(action, params) {
 	var deferred = Q.defer(),
 		params = _.extend(params || {},baseParams);
-	console.log(apiURL(baseURL,action,  params));
 	rest.get(apiURL(baseURL,action,  params),function(data) {
 		deferred.resolve(data);
 	});
