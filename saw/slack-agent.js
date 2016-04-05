@@ -49,11 +49,11 @@ function createRoom(name) {
 function inviteMember(roomName,user) {
 	var userId;
 	if(user.email !== undefined) {
-		userId = findUserByEmail(user.email);
+		userId = findUserByEmail(user.email).id;
 	}
 	if(user.name !== undefined) {
-		userId = findUserByEmail(user.name);
-	} 
+		userId = findUserByName(user.name).id;
+	}
 	return callSlack('channels.invite',{channel:allRooms[roomName].id, user:userId});
 }
 
