@@ -14,6 +14,7 @@ function SAW() {
 	this.baseUrlBulk = '';
 	this.baseUrlEntity = '';
 	this.baseUrlPerson = '';
+	this.baseUrlPersonGroup = '';
 
 	this.TOKEN = '';
 	this.LAUNCH_TIME = 0;
@@ -111,6 +112,7 @@ SAW.prototype.__createUpdateOperation = function (entityType, entityId, properti
 SAW.prototype.__executeUpdateOperation = function (postBody) {
 	var that = this;
 	return Q.Promise(function (resolve, reject, notify) {
+		console.log(JSON.stringify(postBody));
 		that.__httpPost(that.baseUrlBulk, postBody, function (data, res) {
 			if (res.statusCode == 200) {
 				// data.meta.completion_status === 'OK'
@@ -128,6 +130,7 @@ SAW.prototype.login = function (url, tenantId, username, password) {
 	that.tenantId = tenantId;
 	that.baseUrlEntity = util.format('/rest/%s/ems/Incident', that.tenantId);
 	that.baseUrlPerson = util.format('/rest/%s/ems/Person', that.tenantId);
+	that.baseUrlPersonGroup = util.format('/rest/%s/ems/PersonGroup', that.tenantId);
 	that.baseUrlBulk = util.format('/rest/%s/ems/bulk', that.tenantId);
 
 	that.__httpPost('/auth/authentication-endpoint/authenticate/login?TENANTID=' + tenantId, { 'Login': username, 'Password': password }, function (data, res) {
@@ -210,11 +213,49 @@ SAW.prototype.__getPersonByEmail = function (email) {
 	});
 };
 
-SAW.prototype.assignEntity = function(entityType, entityId, email) {
+SAW.prototype.__getGroupByName = function (name) {
 	var that = this;
+	var layout = ['Id', 'Name', 'GroupType'];
+	var url = that.baseUrlPersonGroup + util.format("?filter=Name = ('%s')&layout=%s", name, layout.join());
+	return Q.Promise(function (resolve, reject, notify) {
+		that.__httpGet(url, function (data, res) {
+			if (res.statusCode === 200) {
+				if (data.entities.length > 0) {
+					resolve(data.entities[0]);
+				} else {
+					reject('Cannot find group by name: ' + name);
+				}
+			} else {
+				reject(res.statusMessage);
+			}
+		});
+	});
+};
+
+SAW.prototype.assignPerson = function(entityType, entityId, field, email) {
+	var that = this;
+	var fieldName = {
+		OwnedByPerson: 'OwnedByPerson',
+		ExpertAssignee: 'ExpertAssignee'
+	}[field];
 	return this.__getPersonByEmail(email).then(function (person) {
 		var personId = person.properties.Id;
-		return that.__executeUpdateOperation(that.__createUpdateOperation(entityType, entityId, { OwnedByPerson: personId }));
+		var body = {};
+		body[fieldName] = personId;
+		return that.__executeUpdateOperation(that.__createUpdateOperation(entityType, entityId, body));
+	});
+};
+
+SAW.prototype.assignGroup = function(entityType, entityId, field, groupName) {
+	var that = this;
+	var fieldName = {
+		ExpertGroup: 'ExpertGroup'
+	}[field];
+	return this.__getGroupByName(groupName).then(function (group) {
+		var groupId = group.properties.Id;
+		var body = {};
+		body[fieldName] = groupId;
+		return that.__executeUpdateOperation(that.__createUpdateOperation(entityType, entityId, body));
 	});
 };
 
