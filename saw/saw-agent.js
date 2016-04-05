@@ -25,6 +25,7 @@ SAW.prototype.headers = { 'Content-Type': 'application/json' };
 SAW.prototype.DELAY_WATCH_ENTITY = 1000 * 10;
 SAW.prototype.EVENT_SAW_NEW_ENTITY = 'SAW_NEW_ENTITY';
 SAW.prototype.EVENT_SAW_UPDATE_ENTITY = 'SAW_UPDATE_ENTITY';
+SAW.prototype.EVENT_SAW_AUTHORIZED = 'EVENT_SAW_AUTHORIZED';
 
 SAW.prototype.__httpGet = function (path, callback) {
 	this.client.get(this.sawUrl + path, { headers: this.headers }, callback);
@@ -56,7 +57,7 @@ SAW.prototype.__getEntity = function (entityId) {
 	var that = this;
 	var layout = ['Id','DisplayLabel','AssignedGroup.Id','AssignedGroup.Name'];
 	return Q.Promise(function (resolve, reject, notify) {
-		that.__httpGet(that.baseUrlEntity + '/' + entityId + '?layout=' + layout.join(), function (data, res) {
+		that.__httpGet(that.baseUrlEntity + util.format('/%s?layout=%s', entityId, layout.join()), function (data, res) {
 			if (res.statusCode == 200) {
 				if (data.entities.length > 0) {
 					resolve(data.entities[0]);
@@ -70,7 +71,7 @@ SAW.prototype.__getEntity = function (entityId) {
 	});
 };
 
-SAW.prototype.__getPersonsFromGroup = function (entity) {
+SAW.prototype.__getPersonsByGroup = function (entity) {
 	entity['persons'] = [];
 	var that = this;
 	var layout = ['Id','Name','Email'];
@@ -79,7 +80,7 @@ SAW.prototype.__getPersonsFromGroup = function (entity) {
 		if (assignedGroup === undefined) {
 			resolve(entity);
 		} else {
-			that.__httpGet(that.baseUrlPerson + '?filter=(PersonToGroup[Id = ' + assignedGroup.Id + '])&layout=' + layout.join(), function (data, res) {
+			that.__httpGet(that.baseUrlPerson + util.format('?filter=(PersonToGroup[Id = %s])&layout=%s', assignedGroup.Id, layout.join()), function (data, res) {
 				if (res.statusCode == 200) {
 					if (data.entities.length > 0) {
 						entity['persons'] = data.entities;
@@ -107,6 +108,20 @@ SAW.prototype.__createUpdateOperation = function (entityType, entityId, properti
 	};
 };
 
+SAW.prototype.__executeUpdateOperation = function (postBody) {
+	var that = this;
+	return Q.Promise(function (resolve, reject, notify) {
+		that.__httpPost(that.baseUrlBulk, postBody, function (data, res) {
+			if (res.statusCode == 200) {
+				// data.meta.completion_status === 'OK'
+				resolve(data);
+			} else {
+				reject(res.statusMessage);
+			}
+		})
+	});
+};
+
 SAW.prototype.login = function (url, tenantId, username, password) {
 	var that = this;
 	that.sawUrl = url;
@@ -118,6 +133,7 @@ SAW.prototype.login = function (url, tenantId, username, password) {
 	that.__httpPost('/auth/authentication-endpoint/authenticate/login?TENANTID=' + tenantId, { 'Login': username, 'Password': password }, function (data, res) {
 		if (res.statusCode == 200) {
 			that.headers['Cookie'] = 'LWSSO_COOKIE_KEY=' + data.toString();
+			that.eventEmitter.emit(that.EVENT_SAW_AUTHORIZED);
 		} else {
 			console.log('Cannot login SAW. Message: ' + res.statusMessage);
 		}
@@ -172,20 +188,33 @@ SAW.prototype.watch = function () {
 };
 
 SAW.prototype.showDetail = function (entityId) {
-	return this.__getEntity.bind(this)(entityId).then(this.__getPersonsFromGroup.bind(this));
+	return this.__getEntity.bind(this)(entityId).then(this.__getPersonsByGroup.bind(this));
 };
 
-SAW.prototype.assignEntity = function(entityType, entityId, personId) {
+SAW.prototype.__getPersonByEmail = function (email) {
 	var that = this;
+	var layout = ['Id','Name','Email'];
+	var url = that.baseUrlPerson + util.format("?filter=((IsSystemIntegration != 'true' and IsSystem != 'true') and Email = ('%s'))&layout=%s", email, layout.join());
 	return Q.Promise(function (resolve, reject, notify) {
-		that.__httpPost(that.baseUrlBulk, that.__createUpdateOperation(entityType, entityId, { OwnedByPerson: personId }), function (data, res) {
-			if (res.statusCode == 200) {
-				// data.meta.completion_status === 'OK'
-				resolve(data);
+		that.__httpGet(url, function (data, res) {
+			if (res.statusCode === 200) {
+				if (data.entities.length > 0) {
+					resolve(data.entities[0]);
+				} else {
+					reject('Cannot find person by email: ' + email);
+				}
 			} else {
 				reject(res.statusMessage);
 			}
-		})
+		});
+	});
+};
+
+SAW.prototype.assignEntity = function(entityType, entityId, email) {
+	var that = this;
+	return this.__getPersonByEmail(email).then(function (person) {
+		var personId = person.properties.Id;
+		return that.__executeUpdateOperation(that.__createUpdateOperation(entityType, entityId, { OwnedByPerson: personId }));
 	});
 };
 
@@ -199,6 +228,10 @@ SAW.prototype.onEntityCreated = function(callback) {
 
 SAW.prototype.onEntityUpdated = function(callback) {
 	this.eventEmitter.on(this.EVENT_SAW_UPDATE_ENTITY, callback);
+};
+
+SAW.prototype.onAuthorized = function (callback) {
+	this.eventEmitter.on(this.EVENT_SAW_AUTHORIZED, callback);
 };
 
 module.exports = new SAW();
