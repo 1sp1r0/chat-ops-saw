@@ -102,5 +102,6 @@ setInterval(function() {
 module.exports = {
 	createRoom: createRoom,
 	inviteMember: inviteMember,
-	sendMessage: sendMessage
+	sendMessage: sendMessage,
+	findUserByName: findUserByName
 }

@@ -13,6 +13,14 @@ function genRoomName(entity) {
 	return [entity.entity_type.toLowerCase(),entity.properties.Id].join('-');
 }
 
+function parseRoomName(roomName) {
+	var result = roomName.split('-');
+	return {
+		entityType: 'Incident',
+		Id: result[1]
+	};
+}
+
 function genUpdateMessage(entity) {
 	return [entity.entity_type,entity.properties.Id,'updated'].join(' ');
 }
@@ -46,7 +54,7 @@ sawAgent.onEntityCreated(function(entities){
 
 sawAgent.onEntityUpdated(function(entities) {
 	model([model.Entity]).match(entities);
-	
+
 	entities.forEach(function(entity) {
 		slackAgent.sendMessage(genRoomName(entity), genUpdateMessage(entity), HUBUT_NAME);
 	});
@@ -58,5 +66,17 @@ module.exports = function(hubot) {
 	hubot.hear(/badger/i,function(res) {
 		res.send("Badgers? BADGERS? WE DON'T NEED NO STINKIN BADGERS");
 		res.send(util.inspect(slackAgent.listUsers()));
+	});
+
+	hubot.respond(/Update '(.*)'! Owner, expert assignee assign to @'(.*)'/i, function(res) {
+		var incidentId = res.match[1], 
+			assignee = slackAgent.findUserByName(res.match[2]).email, 
+			entityInfo = parseRoomName(res.message.room);
+
+		res.send('OK, I will update ' + incidentId);
+		sawAgent.assignEntity('Incident',entityInfo.Id,assignee).then(function() {
+			res.send('Done.');
+		});
+
 	});
 }
