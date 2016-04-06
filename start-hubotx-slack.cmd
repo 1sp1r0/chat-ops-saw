@@ -1,1 +1,1 @@
-bin\hubot --adapter slack
+bin\hubot --adapter slack %1 %2 %3 %4
