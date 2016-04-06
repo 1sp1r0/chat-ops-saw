@@ -1,13 +1,11 @@
 var model = require('duck-type').create();
 
 model.type('SawAgent',{
+	showDetail: Function,
 	assignGroup: Function,
 	assignPerson: Function,
 	closeIncident :Function,
-	onEntityCreated : Function,
-	onEntityUpdated: Function,
 	login: Function,
-	watch: Function
 });
 
 model.type('SlackAgent',{
@@ -17,17 +15,14 @@ model.type('SlackAgent',{
 	findUserByName: Function
 });
 
-model.type('Entity',{
-	entity_type: String,
-	properties:{
-		Id: String
-	}
+model.type('EntityUpdatedMessage',{
+	message: String
 });
 
-model.type('Person', {
-	properties:{
-		Email: String
-	}
-})
+model.type('EntityCreatedMessage',{
+	message: String,
+	persons: String
+});
+
 
 module.exports = model;
