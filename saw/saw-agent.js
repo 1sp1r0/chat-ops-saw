@@ -130,6 +130,98 @@ SAW.prototype.__executeUpdateOperation = function (postBody) {
 	});
 };
 
+SAW.prototype.__getPersonByEmail = function (email) {
+	var that = this;
+	var layout = ['Id','Name','Email'];
+	var url = that.baseUrlPerson + util.format("?filter=((IsSystemIntegration != 'true' and IsSystem != 'true') and Email = ('%s'))&layout=%s", email, layout.join());
+	return Q.Promise(function (resolve, reject, notify) {
+		that.__httpGet(url, function (data, res) {
+			if (res.statusCode === 200) {
+				if (data.entities.length > 0) {
+					resolve(data.entities[0]);
+				} else {
+					reject('Cannot find person by email: ' + email);
+				}
+			} else {
+				reject(res.statusMessage);
+			}
+		});
+	});
+};
+
+SAW.prototype.__getGroupByName = function (name) {
+	var that = this;
+	var layout = ['Id', 'Name', 'GroupType'];
+	var url = that.baseUrlPersonGroup + util.format("?filter=Name = ('%s')&layout=%s", name, layout.join());
+	return Q.Promise(function (resolve, reject, notify) {
+		that.__httpGet(url, function (data, res) {
+			if (res.statusCode === 200) {
+				if (data.entities.length > 0) {
+					resolve(data.entities[0]);
+				} else {
+					reject('Cannot find group by name: ' + name);
+				}
+			} else {
+				reject(res.statusMessage);
+			}
+		});
+	});
+};
+
+SAW.prototype.__getCategoryByName = function (name) {
+	var that = this;
+	var layout = ['Id', 'DisplayLabel'];
+	var url = that.baseUrlITProcessRecordCategory + util.format("?filter=(IsActive = 'true' and (DisplayLabel startswith ('%s') or Level1Parent startswith ('%s') or Level2Parent startswith ('%s')))&layout=%s", name, name, name, layout.join());
+	console.log(url);
+	return Q.Promise(function (resolve, reject, notify) {
+		that.__httpGet(url, function (data, res) {
+			if (res.statusCode === 200) {
+				if (data.entities.length > 0) {
+					resolve(data.entities[0]);
+				} else {
+					reject('Cannot find category by name: ' + name);
+				}
+			} else {
+				reject(res.statusMessage);
+			}
+		});
+	});
+};
+
+// ----------------------------------------------------------------------------------------------------------------------------------
+
+SAW.prototype.assignPerson = function(entityType, entityId, field, email) {
+	var that = this;
+	var fieldName = that.STRING_TO_FIELD_MAPPING[field];
+	return this.__getPersonByEmail(email).then(function (person) {
+		var personId = person.properties.Id;
+		var body = {};
+		body[fieldName] = personId;
+		return that.__executeUpdateOperation(that.__createUpdateOperation(entityType, entityId, body));
+	});
+};
+
+SAW.prototype.assignGroup = function(entityType, entityId, field, groupName) {
+	var that = this;
+	var fieldName = that.STRING_TO_FIELD_MAPPING[field];
+	return this.__getGroupByName(groupName).then(function (group) {
+		var groupId = group.properties.Id;
+		var body = {};
+		body[fieldName] = groupId;
+		return that.__executeUpdateOperation(that.__createUpdateOperation(entityType, entityId, body));
+	});
+};
+
+SAW.prototype.assignCategory = function (entityType, entityId, categoryName) {
+	var that = this;
+	return this.__getCategoryByName(categoryName).then(function (category) {
+		var categoryId = category.properties.Id;
+		var body = {};
+		body['Category'] = categoryId;
+		return that.__executeUpdateOperation(that.__createUpdateOperation(entityType, entityId, body));
+	});
+};
+
 SAW.prototype.login = function (url, tenantId, username, password) {
 	var that = this;
 	that.sawUrl = url;
@@ -200,92 +292,6 @@ SAW.prototype.watch = function () {
 SAW.prototype.showDetail = function (entityId) {
 	return this.__getEntity.bind(this)(entityId).then(this.__getPersonsByGroup.bind(this));
 };
-
-SAW.prototype.__getPersonByEmail = function (email) {
-	var that = this;
-	var layout = ['Id','Name','Email'];
-	var url = that.baseUrlPerson + util.format("?filter=((IsSystemIntegration != 'true' and IsSystem != 'true') and Email = ('%s'))&layout=%s", email, layout.join());
-	return Q.Promise(function (resolve, reject, notify) {
-		that.__httpGet(url, function (data, res) {
-			if (res.statusCode === 200) {
-				if (data.entities.length > 0) {
-					resolve(data.entities[0]);
-				} else {
-					reject('Cannot find person by email: ' + email);
-				}
-			} else {
-				reject(res.statusMessage);
-			}
-		});
-	});
-};
-
-SAW.prototype.__getGroupByName = function (name) {
-	var that = this;
-	var layout = ['Id', 'Name', 'GroupType'];
-	var url = that.baseUrlPersonGroup + util.format("?filter=Name = ('%s')&layout=%s", name, layout.join());
-	return Q.Promise(function (resolve, reject, notify) {
-		that.__httpGet(url, function (data, res) {
-			if (res.statusCode === 200) {
-				if (data.entities.length > 0) {
-					resolve(data.entities[0]);
-				} else {
-					reject('Cannot find group by name: ' + name);
-				}
-			} else {
-				reject(res.statusMessage);
-			}
-		});
-	});
-};
-
-SAW.prototype.assignPerson = function(entityType, entityId, field, email) {
-	var that = this;
-	var fieldName = that.STRING_TO_FIELD_MAPPING[field];
-	return this.__getPersonByEmail(email).then(function (person) {
-		var personId = person.properties.Id;
-		var body = {};
-		body[fieldName] = personId;
-		return that.__executeUpdateOperation(that.__createUpdateOperation(entityType, entityId, body));
-	});
-};
-
-SAW.prototype.assignGroup = function(entityType, entityId, field, groupName) {
-	var that = this;
-	var fieldName = that.STRING_TO_FIELD_MAPPING[field];
-	return this.__getGroupByName(groupName).then(function (group) {
-		var groupId = group.properties.Id;
-		var body = {};
-		body[fieldName] = groupId;
-		return that.__executeUpdateOperation(that.__createUpdateOperation(entityType, entityId, body));
-	});
-};
-
-SAW.prototype.__getCategoryByName = function () {
-	var that = this;
-	var layout = ['Id', 'Name'];
-	var url = that.baseUrlPersonGroup + util.format("?filter=Name = ('%s')&layout=%s", name, layout.join());
-	return Q.Promise(function (resolve, reject, notify) {
-		that.__httpGet(url, function (data, res) {
-			if (res.statusCode === 200) {
-				if (data.entities.length > 0) {
-					resolve(data.entities[0]);
-				} else {
-					reject('Cannot find group by name: ' + name);
-				}
-			} else {
-				reject(res.statusMessage);
-			}
-		});
-	});
-};
-
-// SAW.prototype.assignCategory = function (entityType, entityId, categoryName) {
-// 	var that = this;
-// 	return this.__getCategoryByName(categoryName).then(function (category) {
-// 		var 
-// 	});
-// };
 
 SAW.prototype.closeIncident = function(entityId) {
 
