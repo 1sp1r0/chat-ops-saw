@@ -15,6 +15,7 @@ function SAW() {
 	this.baseUrlEntity = '';
 	this.baseUrlPerson = '';
 	this.baseUrlPersonGroup = '';
+	this.baseUrlITProcessRecordCategory = '';
 
 	this.TOKEN = '';
 	this.LAUNCH_TIME = 0;
@@ -27,6 +28,11 @@ SAW.prototype.DELAY_WATCH_ENTITY = 1000 * 10;
 SAW.prototype.EVENT_SAW_NEW_ENTITY = 'SAW_NEW_ENTITY';
 SAW.prototype.EVENT_SAW_UPDATE_ENTITY = 'SAW_UPDATE_ENTITY';
 SAW.prototype.EVENT_SAW_AUTHORIZED = 'EVENT_SAW_AUTHORIZED';
+SAW.prototype.STRING_TO_FIELD_MAPPING = {
+	OwnedByPerson: 'OwnedByPerson',
+	ExpertAssignee: 'ExpertAssignee',
+	ExpertGroup: 'ExpertGroup'
+};
 
 SAW.prototype.__httpGet = function (path, callback) {
 	this.client.get(this.sawUrl + path, { headers: this.headers }, callback);
@@ -131,6 +137,7 @@ SAW.prototype.login = function (url, tenantId, username, password) {
 	that.baseUrlEntity = util.format('/rest/%s/ems/Incident', that.tenantId);
 	that.baseUrlPerson = util.format('/rest/%s/ems/Person', that.tenantId);
 	that.baseUrlPersonGroup = util.format('/rest/%s/ems/PersonGroup', that.tenantId);
+	that.baseUrlITProcessRecordCategory = util.format('/rest/%s/ems/ITProcessRecordCategory', that.tenantId);
 	that.baseUrlBulk = util.format('/rest/%s/ems/bulk', that.tenantId);
 
 	that.__httpPost('/auth/authentication-endpoint/authenticate/login?TENANTID=' + tenantId, { 'Login': username, 'Password': password }, function (data, res) {
@@ -234,10 +241,7 @@ SAW.prototype.__getGroupByName = function (name) {
 
 SAW.prototype.assignPerson = function(entityType, entityId, field, email) {
 	var that = this;
-	var fieldName = {
-		OwnedByPerson: 'OwnedByPerson',
-		ExpertAssignee: 'ExpertAssignee'
-	}[field];
+	var fieldName = that.STRING_TO_FIELD_MAPPING[field];
 	return this.__getPersonByEmail(email).then(function (person) {
 		var personId = person.properties.Id;
 		var body = {};
@@ -248,9 +252,7 @@ SAW.prototype.assignPerson = function(entityType, entityId, field, email) {
 
 SAW.prototype.assignGroup = function(entityType, entityId, field, groupName) {
 	var that = this;
-	var fieldName = {
-		ExpertGroup: 'ExpertGroup'
-	}[field];
+	var fieldName = that.STRING_TO_FIELD_MAPPING[field];
 	return this.__getGroupByName(groupName).then(function (group) {
 		var groupId = group.properties.Id;
 		var body = {};
@@ -258,6 +260,32 @@ SAW.prototype.assignGroup = function(entityType, entityId, field, groupName) {
 		return that.__executeUpdateOperation(that.__createUpdateOperation(entityType, entityId, body));
 	});
 };
+
+SAW.prototype.__getCategoryByName = function () {
+	var that = this;
+	var layout = ['Id', 'Name'];
+	var url = that.baseUrlPersonGroup + util.format("?filter=Name = ('%s')&layout=%s", name, layout.join());
+	return Q.Promise(function (resolve, reject, notify) {
+		that.__httpGet(url, function (data, res) {
+			if (res.statusCode === 200) {
+				if (data.entities.length > 0) {
+					resolve(data.entities[0]);
+				} else {
+					reject('Cannot find group by name: ' + name);
+				}
+			} else {
+				reject(res.statusMessage);
+			}
+		});
+	});
+};
+
+// SAW.prototype.assignCategory = function (entityType, entityId, categoryName) {
+// 	var that = this;
+// 	return this.__getCategoryByName(categoryName).then(function (category) {
+// 		var 
+// 	});
+// };
 
 SAW.prototype.closeIncident = function(entityId) {
 
