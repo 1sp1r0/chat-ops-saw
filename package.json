@@ -23,7 +23,8 @@
     "node-rest-client": "^1.8.0",
     "duck-type": "*",
     "underscore": "*",
-    "q": "^1.4.1"
+    "q": "^1.4.1",
+    "minimist":"*"
   },
   "engines": {
     "node": "0.10.x"
