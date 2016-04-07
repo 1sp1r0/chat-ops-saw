@@ -58,7 +58,9 @@ function inviteMember(roomName,user) {
 }
 
 function sendMessage(roomName, message, username) {
-	return callSlack('chat.postMessage',{channel:allRooms[roomName].id, text:message, username:username,as_user:false});
+	if(allRooms[roomName]) {
+		return callSlack('chat.postMessage',{channel:allRooms[roomName].id, text:message, username:username,as_user:false});	
+	}
 }
 
 
