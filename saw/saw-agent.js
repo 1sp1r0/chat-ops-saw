@@ -18,10 +18,6 @@ function SAW() {
 };
 
 SAW.prototype.headers = { 'Content-Type': 'application/json' };
-SAW.prototype.DELAY_WATCH_ENTITY = 1000 * 10;
-SAW.prototype.EVENT_SAW_NEW_ENTITY = 'SAW_NEW_ENTITY';
-SAW.prototype.EVENT_SAW_UPDATE_ENTITY = 'SAW_UPDATE_ENTITY';
-SAW.prototype.EVENT_SAW_AUTHORIZED = 'EVENT_SAW_AUTHORIZED';
 
 SAW.prototype.__httpGet = function (path, callback) {
 	this.client.get(this.sawUrl + path, { headers: this.headers }, callback);
