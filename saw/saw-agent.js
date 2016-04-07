@@ -7,7 +7,6 @@ var _ = require('underscore');
 function SAW() {
 	this.eventEmitter = new EventEmitter();
 	this.client = new Client();
-	this.intervalObject = undefined
 	this.sawUrl = '';
 	this.tenantId = '';
 
@@ -16,11 +15,6 @@ function SAW() {
 	this.baseUrlPerson = '';
 	this.baseUrlPersonGroup = '';
 	this.baseUrlITProcessRecordCategory = '';
-
-	this.TOKEN = '';
-	this.LAUNCH_TIME = 0;
-
-	this.cachedEntities = {};
 };
 
 SAW.prototype.headers = { 'Content-Type': 'application/json' };
@@ -35,24 +29,6 @@ SAW.prototype.__httpGet = function (path, callback) {
 
 SAW.prototype.__httpPost = function (path, data, callback) {
 	this.client.post(this.sawUrl + path, { headers: this.headers, data: data }, callback);
-};
-
-SAW.prototype.__splitEntities = function (entities, createdEntities, updatedEntities) {
-	var that = this;
-	entities.forEach(function (e) {
-		if (e.properties.EmsCreationTime >= that.LAUNCH_TIME) {
-			var entityId = e.properties.Id;
-			if (that.cachedEntities[entityId] !== undefined) {
-				console.log('Add entity to updated entity array');
-				updatedEntities.push(e);
-			} else {
-				console.log('Add entity to created entity array');
-				createdEntities.push(e);
-			}
-			that.cachedEntities[entityId] = e;
-			console.log('Cached entities after launched: ' + JSON.stringify(that.cachedEntities));
-		}
-	});
 };
 
 SAW.prototype.__getEntity = function (entityId) {
@@ -235,67 +211,12 @@ SAW.prototype.login = function (url, tenantId, username, password) {
 	});
 };
 
-SAW.prototype.watch = function () {
-	var that = this;
-	var start = new Date().getTime();
-	that.LAUNCH_TIME = start;
-	if (this.intervalObject !== undefined) {
-		clearInterval(this.intervalObject);
-		console.log('Clear interval Object');
-	}
-
-	this.intervalObject = setInterval(function () {
-		var layout = ['Id','DisplayLabel','EmsCreationTime'];
-		var end = new Date().getTime();
-		var url = that.baseUrlEntity + '?filter=(EmsCreationTime btw (' + [start, end].join() + ') or LastUpdateTime btw (' + [start, end].join() + '))&layout=' + layout.join();
-		that.__httpGet(url, function (data, res) {
-			if (res.statusCode == 200) {
-				console.log('Search results: ' + JSON.stringify(data));
-				var entities = data.entities;
-				// [{ 
-				//		entity_type: 'Incident',
-				//		properties: { 
-				//    		LastUpdateTime: 1459231699278,
-				//        	Id: '18246',
-				//        	DisplayLabel: 'ABC' 
-				//		},
-				//     	related_properties: {} 
-				// }]
-				if (entities.length > 0) {
-					var createdEntities = [];
-					var updatedEntities = [];
-					that.__splitEntities(entities, createdEntities, updatedEntities);
-					if (createdEntities.length > 0) {
-						console.log(createdEntities.length + ' Entities are created in SAW');
-						that.eventEmitter.emit(that.EVENT_SAW_NEW_ENTITY, createdEntities);
-					}
-					if (updatedEntities.length > 0) {
-						console.log(updatedEntities.length + ' Entities are updated in SAW');
-						that.eventEmitter.emit(that.EVENT_SAW_UPDATE_ENTITY, updatedEntities);
-					}
-				}
-				start = end;
-			} else {
-				console.log(res.statusMessage);
-			}
-		});
-	}, that.DELAY_WATCH_ENTITY);
-};
-
 SAW.prototype.showDetail = function (entityId) {
 	return this.__getEntity.bind(this)(entityId).then(this.__getPersonsByGroup.bind(this));
 };
 
 SAW.prototype.closeIncident = function(entityId) {
 
-};
-
-SAW.prototype.onEntityCreated = function(callback) {
-	this.eventEmitter.on(this.EVENT_SAW_NEW_ENTITY, callback);
-};
-
-SAW.prototype.onEntityUpdated = function(callback) {
-	this.eventEmitter.on(this.EVENT_SAW_UPDATE_ENTITY, callback);
 };
 
 SAW.prototype.onAuthorized = function (callback) {
