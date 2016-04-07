@@ -28,11 +28,6 @@ SAW.prototype.DELAY_WATCH_ENTITY = 1000 * 10;
 SAW.prototype.EVENT_SAW_NEW_ENTITY = 'SAW_NEW_ENTITY';
 SAW.prototype.EVENT_SAW_UPDATE_ENTITY = 'SAW_UPDATE_ENTITY';
 SAW.prototype.EVENT_SAW_AUTHORIZED = 'EVENT_SAW_AUTHORIZED';
-SAW.prototype.STRING_TO_FIELD_MAPPING = {
-	OwnedByPerson: 'OwnedByPerson',
-	ExpertAssignee: 'ExpertAssignee',
-	ExpertGroup: 'ExpertGroup'
-};
 
 SAW.prototype.__httpGet = function (path, callback) {
 	this.client.get(this.sawUrl + path, { headers: this.headers }, callback);
@@ -192,22 +187,20 @@ SAW.prototype.__getCategoryByName = function (name) {
 
 SAW.prototype.assignPerson = function(entityType, entityId, field, email) {
 	var that = this;
-	var fieldName = that.STRING_TO_FIELD_MAPPING[field];
 	return this.__getPersonByEmail(email).then(function (person) {
 		var personId = person.properties.Id;
 		var body = {};
-		body[fieldName] = personId;
+		body[field] = personId;
 		return that.__executeUpdateOperation(that.__createUpdateOperation(entityType, entityId, body));
 	});
 };
 
 SAW.prototype.assignGroup = function(entityType, entityId, field, groupName) {
 	var that = this;
-	var fieldName = that.STRING_TO_FIELD_MAPPING[field];
 	return this.__getGroupByName(groupName).then(function (group) {
 		var groupId = group.properties.Id;
 		var body = {};
-		body[fieldName] = groupId;
+		body[field] = groupId;
 		return that.__executeUpdateOperation(that.__createUpdateOperation(entityType, entityId, body));
 	});
 };
