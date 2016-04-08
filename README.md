@@ -16,7 +16,11 @@ d)edit your own configuration
 
 ###Run
 1.Using shell adapter
+```
 $ start-hubotx-shell.cmd
+```
 
 2.Using slack adapter
+```
 $ start-hubotx-slack.cmd
+```
