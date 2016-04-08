@@ -1,10 +1,13 @@
 var model = require('duck-type').create();
 
 model.type('SawAgent',{
-	showDetail: Function,
-	assignGroup: Function,
-	assignPerson: Function,
-	closeIncident :Function,
+	getEntity: Function,
+	getPersonsByGroupId: Function,
+	getPersonByEmail: Function,
+	getGroupByName: Function,
+	updateField: Function,
+	assignGroupByGroupName: Function,
+	assignPersonByEmail: Function,
 	login: Function,
 });
 
