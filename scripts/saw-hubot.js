@@ -82,6 +82,11 @@ module.exports = function(hubot) {
 	});
 
 
+	hubot.respond(/help/i, function(res){
+		res.send('help...');
+	});
+	
+
 	//assign person, example: @saw assign-person Incident #1234 Owner to @yu
 	hubot.respond(/assign-person( (\w+) #(\d+))? ([\w, ]+) to @([\w ]+)/i, function(res) {
 		var entityInfo = parseRoomName(res.message.room);
@@ -107,9 +112,6 @@ module.exports = function(hubot) {
 		});
 	});
 
-	hubot.respond(/help/i, function(res){
-		res.send('help...');
-	});
 
 	//assign group, example: @saw assign-group Incident #1234 Owner to yu
 	hubot.respond(/assign-group( (\w+) #(\d+))? ([\w, ]+) to ([\w ]+)/i, function(res) {
@@ -156,7 +158,7 @@ module.exports = function(hubot) {
 
 	});
 
-	//get attributes, example: @saw show Change #12345 Owner,Test
+	//get attributes which include attachment, example: @saw show Change #12345 Owner,Test
 	hubot.respond(/show( (\w+) #(\d+))?([\w, ]*)/i, function(res) {
 		var entityInfo = parseRoomName(res.message.room);
 		var entityType = res.match[2] || entityInfo.entityType; 
@@ -186,4 +188,17 @@ module.exports = function(hubot) {
 
 		console.log('search',entityType, keywords);
 	});
+
+
+	//invite person, example: @saw invite Change #1234 Owner, Expert
+	hubot.respond(/invite( (\w+) #(\d+))? ([\w, ]+)/i, function(res) {
+		var entityInfo = parseRoomName(res.message.room);
+		var entityType = res.match[2] || entityInfo.entityType; 
+		var id = res.match[3] || entityInfo.Id;
+		var fieldNames = res.match[4].split(',').join(' ');
+
+		console.log('invite',entityType, id, fieldNames);
+	});
+
+	//attch 
 }
