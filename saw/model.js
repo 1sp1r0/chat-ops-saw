@@ -9,6 +9,7 @@ model.type('SawAgent',{
 	assignGroupByGroupName: Function,
 	assignPersonByEmail: Function,
 	login: Function,
+	findFieldByName: Function
 });
 
 model.type('SlackAgent',{
